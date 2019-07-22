@@ -4,9 +4,9 @@ NanoALSA
 
 :Date: 2019-01-10
 
-  This library is under development. Do not expect any
-  stability. The API (Application Programming Interface)
-  may change at any time.
+This library is under development. Do not expect any
+stability. The API (Application Programming Interface) may
+change at any time.
 
 Simple, small, user space, file descriptor based library for
 Pulse Code Modulation (PCM) interface of the Linux kernel
