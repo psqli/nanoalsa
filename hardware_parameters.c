@@ -169,9 +169,15 @@ hw_params_fill(struct snd_pcm_hw_params *p)
 
 	// Fill all intervals with the lowest value in min
 	// and the highest value in max.
+	//
+	// 'integer' is set to keep the interval closed
+	// (i.e. openmin = openmax = 0) after refinement.
+	// See snd_interval_refine() in pcm_lib.c
 	for (i = 0; i <= LAST_INTERVAL; i++) {
 		p->intervals[i].min = 0;
 		p->intervals[i].max = UINT_MAX;
+
+		p->intervals[i].integer = 1;
 	}
 
 	// Request mask: ALSA only refines the parameters
