@@ -70,15 +70,7 @@ hw_params_set_interval(struct snd_pcm_hw_params *p, int parameter,
 {
 	struct snd_interval *i = get_interval_struct(p, parameter);
 
-	// openmin and openmax excludes min and max values
-	//
-	// E.g. if max=5 and openmax is set, the actual
-	// maximum value is less than 5 and greater than 4
-	// (i.e. 5 > max > 4).
-	i->openmin = 0;
-	i->openmax = 0;
-	i->integer = 1;
-	i->empty = 0;
+	// TODO: can a refined interval be empty?
 
 	i->min = min;
 	i->max = max;
