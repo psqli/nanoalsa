@@ -115,13 +115,6 @@ hw_params_get_interval(struct snd_pcm_hw_params *p, int parameter,
 {
 	struct snd_interval *i = get_interval_struct(p, parameter);
 
-	// If integer is set, openmin and openmax are zero.
-	// See snd_interval_refine() in pcm_lib.c
-
-	// close interval
-	i->max -= (i->openmax                     ? 1 : 0);
-	i->min += (i->openmin && i->min != i->max ? 1 : 0);
-
 	*min = i->min;
 	*max = i->max;
 }
