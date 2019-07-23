@@ -107,8 +107,9 @@ hw_params_get_interval(struct snd_pcm_hw_params *p, int parameter,
 {
 	struct snd_interval *i = get_interval_struct(p, parameter);
 
-	*min = i->min;
-	*max = i->max;
+	// return closed interval
+	*min = i->min + i->openmin;
+	*max = i->max - i->openmax;
 }
 
 unsigned int
