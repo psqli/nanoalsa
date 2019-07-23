@@ -165,10 +165,10 @@ hw_params_fill(struct snd_pcm_hw_params *p)
 		p->intervals[i].integer = 1;
 	}
 
-	// Request mask: ALSA only refines the parameters
-	// (masks and intervals) that are in this mask.
-	// As we want to refine all parameters, here it's
-	// completely filled in.
+	// Refine mask: ALSA only refines the parameters
+	// (masks and intervals) that are in this mask. To
+	// refine all parameters, here it's completely
+	// filled in. This is ignored in HW_PARAMS ioctl.
 	p->rmask = UINT_MAX;
 
 	// Changed mask: ALSA returns the parameters it has
