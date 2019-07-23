@@ -70,6 +70,11 @@ hw_params_set_interval(struct snd_pcm_hw_params *p, int parameter,
 {
 	struct snd_interval *i = get_interval_struct(p, parameter);
 
+	// close interval
+	i->openmin = 0;
+	i->openmax = 0;
+	i->integer = 1;
+
 	// TODO: can a refined interval be empty?
 
 	i->min = min;
