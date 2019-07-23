@@ -107,7 +107,7 @@ pcm_sw_params_init(struct pcm_sw_params *sw, struct pcm_hw_params *hw)
 }
 
 int
-pcm_software_setup(int fd, struct pcm_sw_params *sw)
+pcm_sw_params_setup(int fd, struct pcm_sw_params *sw)
 {
 	// must use TTSTAMP ioctl before 2.0.12 protocol
 #ifdef SNDRV_PCM_IOCTL_TTSTAMP
