@@ -77,7 +77,7 @@ pcm_hw_params_refine(int fd, struct pcm_hw_params *hw)
 }
 
 int
-pcm_hardware_setup(int fd, struct pcm_hw_params *hw)
+pcm_hw_params_setup(int fd, struct pcm_hw_params *hw)
 {
 	// send hardware parameters to ALSA in kernel
 	if (ioctl(fd, SNDRV_PCM_IOCTL_HW_PARAMS, hw) == -1)

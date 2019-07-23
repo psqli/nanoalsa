@@ -91,7 +91,7 @@ int
 pcm_hw_params_refine(int fd, struct pcm_hw_params *hw);
 
 int
-pcm_hardware_setup(int fd, struct pcm_hw_params *hw);
+pcm_hw_params_setup(int fd, struct pcm_hw_params *hw);
 
 // Software parameters
 // ===================
