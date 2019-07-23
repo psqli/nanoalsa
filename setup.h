@@ -88,6 +88,9 @@ pcm_get_range(struct pcm_hw_params *hw, int parameter,
               unsigned int *min, unsigned int *max);
 
 int
+pcm_hw_params_refine(int fd, struct pcm_hw_params *hw);
+
+int
 pcm_hardware_setup(int fd, struct pcm_hw_params *hw);
 
 // Software parameters

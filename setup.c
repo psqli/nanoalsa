@@ -71,6 +71,12 @@ pcm_get_range(struct pcm_hw_params *hw, int parameter,
 }
 
 int
+pcm_hw_params_refine(int fd, struct pcm_hw_params *hw)
+{
+	return ioctl(fd, SNDRV_PCM_IOCTL_HW_REFINE, hw);
+}
+
+int
 pcm_hardware_setup(int fd, struct pcm_hw_params *hw)
 {
 	// send hardware parameters to ALSA in kernel
