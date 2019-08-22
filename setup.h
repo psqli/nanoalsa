@@ -74,14 +74,14 @@ void
 pcm_hw_params_init(struct pcm_hw_params *hw);
 
 void
-pcm_set(struct pcm_hw_params *hw, int parameter, int value);
+pcm_set(struct pcm_hw_params *hw, int parameter, unsigned int value);
 
 void
 pcm_set_range(struct pcm_hw_params *hw, int parameter,
               unsigned int min, unsigned int max);
 
-int
-pcm_get(struct pcm_hw_params *hw, int parameter, int value);
+unsigned int
+pcm_get(struct pcm_hw_params *hw, int parameter, unsigned int value);
 
 void
 pcm_get_range(struct pcm_hw_params *hw, int parameter,

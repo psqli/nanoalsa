@@ -32,7 +32,7 @@ pcm_hw_params_init(struct pcm_hw_params *hw)
 }
 
 void
-pcm_set(struct pcm_hw_params *hw, int parameter, int value)
+pcm_set(struct pcm_hw_params *hw, int parameter, unsigned int value)
 {
 	switch (parameter) {
 	case PCM_INTERRUPT:
@@ -52,8 +52,8 @@ pcm_set_range(struct pcm_hw_params *hw, int parameter,
 }
 
 // for masks, return 1 if value is set, 0 otherwise
-int
-pcm_get(struct pcm_hw_params *hw, int parameter, int value)
+unsigned int
+pcm_get(struct pcm_hw_params *hw, int parameter, unsigned int value)
 {
 	switch (parameter) {
 	case PCM_INTERRUPT:
