@@ -6,6 +6,8 @@ libname = libnanoalsa
 # Include files ending with .c
 sources := $(wildcard *.c)
 objects := $(patsubst %.c, %.o, $(sources))
+static_library := $(libname).a
+shared_library := $(libname).so
 
 # -W  Control display of warnings.
 CFLAGS += -Wall
@@ -17,15 +19,15 @@ CFLAGS += -ggdb
 # Link as a shared library
 LDFLAGS = -shared
 
-all: static_library shared_library
+all: $(static_library) $(shared_library)
 
 # PCM library
 
-static_library: $(objects)
-	$(AR) rcs $(libname).a $(objects)
+$(static_library): $(objects)
+	$(AR) rcs $@ $(objects)
 
-shared_library: $(objects)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(libname).so $(objects)
+$(shared_library): $(objects)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(objects)
 
 hardware_parameters.o: hardware_parameters.c
 
@@ -39,4 +41,4 @@ open.o: open.c open.h
 
 .PHONY: clean
 clean:
-	-$(RM) $(objects)
+	-$(RM) $(objects) $(static_library) $(shared_library)
