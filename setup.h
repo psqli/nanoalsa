@@ -87,6 +87,22 @@ void
 pcm_get_range(struct pcm_hw_params *hw, int parameter,
               unsigned int *min, unsigned int *max);
 
+static inline unsigned int
+pcm_get_min(struct pcm_hw_params *hw, int parameter)
+{
+	unsigned int min, max;
+	pcm_get_range(hw, parameter, &min, &max);
+	return min;
+}
+
+static inline unsigned int
+pcm_get_max(struct pcm_hw_params *hw, int parameter)
+{
+	unsigned int min, max;
+	pcm_get_range(hw, parameter, &min, &max);
+	return max;
+}
+
 int
 pcm_hw_params_refine(int fd, struct pcm_hw_params *hw);
 
