@@ -26,13 +26,17 @@ LDLIBS = -lnanoalsa
 # Additional path(s) to search for prerequisites
 VPATH = ..
 
-all: waveplay
+all: waveplay stdplay
 
 # Play wave (.wav) files
 
 waveplay: waveplay.o
 
 waveplay.o: waveplay.c pcm.h riff.h riff_wave.h
+
+stdplay: stdplay.o
+
+stdplay.o: stdplay.c pcm.h riff.h riff_wave.h
 
 # Clean
 
