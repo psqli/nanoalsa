@@ -26,7 +26,7 @@ LDLIBS = -lnanoalsa
 # Additional path(s) to search for prerequisites
 VPATH = ..
 
-all: waveplay stdplay
+all: waveplay stdplay minplay
 
 # Play wave (.wav) files
 
@@ -37,6 +37,10 @@ waveplay.o: waveplay.c pcm.h riff.h riff_wave.h
 stdplay: stdplay.o
 
 stdplay.o: stdplay.c pcm.h riff.h riff_wave.h
+
+minplay: minplay.o
+
+minplay.o: minplay.c
 
 # Clean
 
