@@ -131,8 +131,8 @@ Returns nothing.
 pcm_set_range(params, parameter, min, max)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Set a range in which the hardware can choose the first valid value for
-`parameter`.
+Set a range in which the Linux kernel will choose the first valid value
+(supported by hardware) for `parameter`.
 
 - min (int): Minimum value.
 - max (int): Maximum value.
