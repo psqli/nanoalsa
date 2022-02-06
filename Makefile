@@ -1,5 +1,5 @@
 
-# 2019-01-09
+# 2022-02-06
 
 libname = libnanoalsa
 
@@ -29,13 +29,7 @@ $(static_library): $(objects)
 $(shared_library): $(objects)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(objects)
 
-hardware_parameters.o: hardware_parameters.c
-
-setup.o: setup.c operations.h setup.h
-
-operations.o: operations.c operations.h
-
-open.o: open.c open.h
+nanoalsa.o: nanoalsa.c nanoalsa.h
 
 # Clean
 
