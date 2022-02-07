@@ -17,28 +17,27 @@
 // ========================================================================
 
 // set parameters
-void
+static void
 hw_params_set_mask(struct snd_pcm_hw_params *p, int parameter,
                    unsigned int value);
-void
+static void
 hw_params_set_interval(struct snd_pcm_hw_params *p, int parameter,
                        unsigned int min, unsigned int max);
-void
+static void
 hw_params_set(struct snd_pcm_hw_params *p, int parameter, unsigned int value);
 
 // get parameters
-unsigned int
+static unsigned int
 hw_params_get_mask(struct snd_pcm_hw_params *p, int parameter,
                    unsigned int value);
-void
+static void
 hw_params_get_interval(struct snd_pcm_hw_params *p, int parameter,
                        unsigned int *min, unsigned int *max);
-unsigned int
+static unsigned int
 hw_params_get(struct snd_pcm_hw_params *p, int parameter, unsigned int value);
 
 // initialize parameters structure
-// -------------------------------
-void
+static void
 hw_params_fill(struct snd_pcm_hw_params *p);
 
 #include <limits.h>  // UINT_MAX
@@ -77,10 +76,7 @@ get_interval_struct(struct snd_pcm_hw_params *p, unsigned int parameter)
 	return &p->intervals[parameter - SNDRV_PCM_HW_PARAM_FIRST_INTERVAL];
 }
 
-//       Set
-// ================
-
-void
+static void
 hw_params_set_mask(struct snd_pcm_hw_params *p, int parameter,
                    unsigned int value)
 {
@@ -94,7 +90,7 @@ hw_params_set_mask(struct snd_pcm_hw_params *p, int parameter,
 	m->bits[get_index(value)] |= get_mask(value);
 }
 
-void
+static void
 hw_params_set_interval(struct snd_pcm_hw_params *p, int parameter,
                        unsigned int min, unsigned int max)
 {
@@ -111,7 +107,7 @@ hw_params_set_interval(struct snd_pcm_hw_params *p, int parameter,
 	i->max = max;
 }
 
-void
+static void
 hw_params_set(struct snd_pcm_hw_params *p, int parameter, unsigned int value)
 {
 	if (is_mask(parameter))
@@ -120,13 +116,10 @@ hw_params_set(struct snd_pcm_hw_params *p, int parameter, unsigned int value)
 		hw_params_set_interval(p, parameter, value, value);
 }
 
-//       Get
-// ================
-
 // Return 1 if value is set, otherwise 0
 //
 // E.g.: parameter = FORMAT, value = Signed 16-bit Little-Endian
-unsigned int
+static unsigned int
 hw_params_get_mask(struct snd_pcm_hw_params *p, int parameter,
                    unsigned int value)
 {
@@ -136,7 +129,7 @@ hw_params_get_mask(struct snd_pcm_hw_params *p, int parameter,
 }
 
 // After HW_PARAMS ioctl, min == max
-void
+static void
 hw_params_get_interval(struct snd_pcm_hw_params *p, int parameter,
                        unsigned int *min, unsigned int *max)
 {
@@ -147,7 +140,7 @@ hw_params_get_interval(struct snd_pcm_hw_params *p, int parameter,
 	*max = i->max - i->openmax;
 }
 
-unsigned int
+static unsigned int
 hw_params_get(struct snd_pcm_hw_params *p, int parameter, unsigned int value)
 {
 	unsigned int ret, tmp;
@@ -160,14 +153,8 @@ hw_params_get(struct snd_pcm_hw_params *p, int parameter, unsigned int value)
 	return ret;
 }
 
-//       Fill
-// ================
-
-// define the relative LAST_MASK and LAST_INTERVAL
-#define LAST_MASK \
-	(SNDRV_PCM_HW_PARAM_LAST_MASK - SNDRV_PCM_HW_PARAM_FIRST_MASK)
-#define LAST_INTERVAL \
-	(SNDRV_PCM_HW_PARAM_LAST_INTERVAL - SNDRV_PCM_HW_PARAM_FIRST_INTERVAL)
+static const int INTERVAL_COUNT = SNDRV_PCM_HW_PARAM_LAST_INTERVAL -
+                                  SNDRV_PCM_HW_PARAM_FIRST_INTERVAL;
 
 // Set all parameters to all values (i.e. fill all masks
 // with ones and fill all intervals with full range).
@@ -177,7 +164,7 @@ hw_params_get(struct snd_pcm_hw_params *p, int parameter, unsigned int value)
 // coherent to the values of other parameters that set (or
 // are influenced by) the same setting. If no values remain
 // after refinement, EINVAL error is returned.
-void
+static void
 hw_params_fill(struct snd_pcm_hw_params *p)
 {
 	int i;
@@ -190,7 +177,7 @@ hw_params_fill(struct snd_pcm_hw_params *p)
 
 	// Fill all intervals with the lowest value in min
 	// and the highest value in max.
-	for (i = 0; i <= LAST_INTERVAL; i++) {
+	for (i = 0; i <= INTERVAL_COUNT; i++) {
 		p->intervals[i].min = 0;
 		p->intervals[i].max = UINT_MAX;
 	}
@@ -264,26 +251,27 @@ pcm_action_timestamp(int fd, struct timespec *ts)
 #define PCM_NO_INTERRUPTS SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP
 
 void
-pcm_hw_params_init(struct pcm_hw_params *hw)
+pcm_hw_params_init(pcm_hw_params_t *hw)
 {
 	hw_params_fill(hw);
 }
 
 void
-pcm_set(struct pcm_hw_params *hw, int parameter, unsigned int value)
+pcm_set(pcm_hw_params_t *hw, pcm_param_t parameter, unsigned int value)
 {
 	switch (parameter) {
+	default:
+		hw_params_set(hw, parameter, value);
+		break;
 	case PCM_INTERRUPT:
 		hw->flags = value ? hw->flags |  PCM_NO_INTERRUPTS
 		                  : hw->flags & ~PCM_NO_INTERRUPTS;
-		return;
+		break;
 	}
-
-	hw_params_set(hw, parameter, value);
 }
 
 void
-pcm_set_range(struct pcm_hw_params *hw, int parameter,
+pcm_set_range(pcm_hw_params_t *hw, pcm_param_t parameter,
               unsigned int min, unsigned int max)
 {
 	hw_params_set_interval(hw, parameter, min, max);
@@ -291,31 +279,31 @@ pcm_set_range(struct pcm_hw_params *hw, int parameter,
 
 // for masks, return 1 if value is set, 0 otherwise
 unsigned int
-pcm_get(struct pcm_hw_params *hw, int parameter, unsigned int value)
+pcm_get(pcm_hw_params_t *hw, pcm_param_t parameter, unsigned int value)
 {
 	switch (parameter) {
+	default:
+		return hw_params_get(hw, parameter, value);
 	case PCM_INTERRUPT:
 		return hw->flags & PCM_NO_INTERRUPTS;
 	}
-
-	return hw_params_get(hw, parameter, value);
 }
 
 void
-pcm_get_range(struct pcm_hw_params *hw, int parameter,
+pcm_get_range(pcm_hw_params_t *hw, pcm_param_t parameter,
               unsigned int *min, unsigned int *max)
 {
 	hw_params_get_interval(hw, parameter, min, max);
 }
 
 int
-pcm_hw_params_refine(int fd, struct pcm_hw_params *hw)
+pcm_hw_params_refine(int fd, pcm_hw_params_t *hw)
 {
 	return ioctl(fd, SNDRV_PCM_IOCTL_HW_REFINE, hw);
 }
 
 int
-pcm_hw_params_setup(int fd, struct pcm_hw_params *hw)
+pcm_hw_params_setup(int fd, pcm_hw_params_t *hw)
 {
 	// send hardware parameters to ALSA in kernel
 	if (ioctl(fd, SNDRV_PCM_IOCTL_HW_PARAMS, hw) == -1)
@@ -328,7 +316,7 @@ pcm_hw_params_setup(int fd, struct pcm_hw_params *hw)
 // ===================
 
 void
-pcm_sw_params_init(struct pcm_sw_params *sw, struct pcm_hw_params *hw)
+pcm_sw_params_init(pcm_sw_params_t *sw, pcm_hw_params_t *hw)
 {
 	// enable timestamp by default
 	sw->tstamp_mode = SNDRV_PCM_TSTAMP_ENABLE;
@@ -345,7 +333,7 @@ pcm_sw_params_init(struct pcm_sw_params *sw, struct pcm_hw_params *hw)
 }
 
 int
-pcm_sw_params_setup(int fd, struct pcm_sw_params *sw)
+pcm_sw_params_setup(int fd, pcm_sw_params_t *sw)
 {
 	// must use TTSTAMP ioctl before 2.0.12 protocol
 #ifdef SNDRV_PCM_IOCTL_TTSTAMP
