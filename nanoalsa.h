@@ -61,11 +61,20 @@ pcm_sync(int fd, pcm_sync_t *sync, unsigned int flags);
 int
 pcm_action_timestamp(int fd, struct timespec *ts);
 
-// Helpers for setting up hardware parameters on the PCM device
+// Helpers for setting up parameters on the PCM device
 // ========================================================================
 
-// alias to the name of structure
+#define PCM_LAST_MASK SNDRV_PCM_HW_PARAM_LAST_MASK
+#define PCM_LAST_INTERVAL SNDRV_PCM_HW_PARAM_LAST_INTERVAL
+
+// alias to the name of hardware and software parameters structures
 typedef struct snd_pcm_hw_params pcm_hw_params_t;
+typedef struct snd_pcm_sw_params pcm_sw_params_t;
+struct pcm_params {
+	pcm_hw_params_t hw_params;
+	pcm_sw_params_t sw_params;
+};
+typedef struct pcm_params pcm_params_t;
 
 enum pcm_access {
 	PCM_ACCESS_RW             = SNDRV_PCM_ACCESS_RW_INTERLEAVED,
@@ -89,7 +98,15 @@ enum pcm_format {
 };
 typedef enum pcm_format pcm_format_t;
 
-enum pcm_hw_param {
+// timestamp clock type
+enum pcm_clock_type_t {
+	PCM_CLOCK_REALTIME      = SNDRV_PCM_TSTAMP_TYPE_GETTIMEOFDAY,
+	PCM_CLOCK_MONOTONIC     = SNDRV_PCM_TSTAMP_TYPE_MONOTONIC,
+	PCM_CLOCK_MONOTONIC_RAW = SNDRV_PCM_TSTAMP_TYPE_MONOTONIC_RAW,
+};
+typedef enum pcm_clock_type_t pcm_clock_type_t;
+
+enum pcm_param {
 	PCM_ACCESS       = SNDRV_PCM_HW_PARAM_ACCESS,       // mask (pcm_access_t)
 	PCM_FORMAT       = SNDRV_PCM_HW_PARAM_FORMAT,       // mask (pcm_format_t)
 	PCM_RATE         = SNDRV_PCM_HW_PARAM_RATE,         // interval
@@ -107,71 +124,54 @@ enum pcm_hw_param {
 	PCM_PERIODS      = SNDRV_PCM_HW_PARAM_PERIODS,      // interval (variant of BUFFER_SIZE)
 
 	// Parameters handled by NanoALSA (see nanoalsa.c)
-	PCM_INTERRUPT = SNDRV_PCM_HW_PARAM_LAST_INTERVAL + 1,
+	PCM_INTERRUPT         = PCM_LAST_INTERVAL + 1, // flag (in hw_params)
+	PCM_TSTAMP_TYPE       = PCM_LAST_INTERVAL + 2, // value (in sw_params)
+	PCM_AVAIL_MIN         = PCM_LAST_INTERVAL + 3, // value (in sw_params)
+	PCM_START_THRESHOLD   = PCM_LAST_INTERVAL + 4, // value (in sw_params)
+	PCM_XRUN_THRESHOLD    = PCM_LAST_INTERVAL + 5, // value (in sw_params)
+	PCM_SILENCE_THRESHOLD = PCM_LAST_INTERVAL + 6, // value (in sw_params)
+	PCM_SILENCE_SIZE      = PCM_LAST_INTERVAL + 7, // value (in sw_params)
 };
-typedef enum pcm_hw_param pcm_param_t;
+typedef enum pcm_param pcm_param_t;
 
 void
-pcm_hw_params_init(pcm_hw_params_t *hw);
+pcm_params_init(pcm_params_t *params);
 
 void
-pcm_set(pcm_hw_params_t *hw, pcm_param_t parameter, unsigned int value);
+pcm_set(pcm_params_t *params, pcm_param_t parameter, unsigned long value);
 
 void
-pcm_set_range(pcm_hw_params_t *hw, pcm_param_t parameter,
+pcm_set_range(pcm_params_t *params, pcm_param_t parameter,
               unsigned int min, unsigned int max);
 
-unsigned int
-pcm_get(pcm_hw_params_t *hw, pcm_param_t parameter, unsigned int value);
+unsigned long
+pcm_get(pcm_params_t *params, pcm_param_t parameter, unsigned int value);
 
 void
-pcm_get_range(pcm_hw_params_t *hw, pcm_param_t parameter,
+pcm_get_range(pcm_params_t *params, pcm_param_t parameter,
               unsigned int *min, unsigned int *max);
 
 static inline unsigned int
-pcm_get_min(pcm_hw_params_t *hw, pcm_param_t parameter)
+pcm_get_min(pcm_params_t *params, pcm_param_t parameter)
 {
 	unsigned int min, max;
-	pcm_get_range(hw, parameter, &min, &max);
+	pcm_get_range(params, parameter, &min, &max);
 	return min;
 }
 
 static inline unsigned int
-pcm_get_max(pcm_hw_params_t *hw, pcm_param_t parameter)
+pcm_get_max(pcm_params_t *params, pcm_param_t parameter)
 {
 	unsigned int min, max;
-	pcm_get_range(hw, parameter, &min, &max);
+	pcm_get_range(params, parameter, &min, &max);
 	return max;
 }
 
 int
-pcm_hw_params_refine(int fd, pcm_hw_params_t *hw);
+pcm_params_refine(int fd, pcm_params_t *params);
 
 int
-pcm_hw_params_setup(int fd, pcm_hw_params_t *hw);
-
-// Helpers for setting up software parameters on the PCM device
-// ========================================================================
-
-// depends on pcm_hw_params_t (hardware parameters structure)
-
-// alias to the name of structure
-typedef struct snd_pcm_sw_params pcm_sw_params_t;
-
-// timestamp clock type
-enum pcm_clock_type_t {
-	PCM_CLOCK_REALTIME      = SNDRV_PCM_TSTAMP_TYPE_GETTIMEOFDAY,
-	PCM_CLOCK_MONOTONIC     = SNDRV_PCM_TSTAMP_TYPE_MONOTONIC,
-	PCM_CLOCK_MONOTONIC_RAW = SNDRV_PCM_TSTAMP_TYPE_MONOTONIC_RAW,
-};
-typedef enum pcm_clock_type_t pcm_clock_type_t;
-
-void
-pcm_sw_params_init(pcm_sw_params_t *sw, pcm_hw_params_t *hw);
-
-int
-pcm_sw_params_setup(int fd, pcm_sw_params_t *sw);
-
+pcm_params_setup(int fd, pcm_params_t *params);
 
 // Helper for opening Linux PCM device
 // ========================================================================

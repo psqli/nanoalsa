@@ -9,10 +9,6 @@
 
 #include "nanoalsa.h"
 
-// NOTE: It's possible to copy the source code of any section in this file
-// and use as a separate file. The only extra step is to add ALSA's header
-// included above.
-
 // Hardware parameters manipulation
 // ========================================================================
 
@@ -149,6 +145,8 @@ hw_params_get(struct snd_pcm_hw_params *p, int parameter, unsigned int value)
 		ret = hw_params_get_mask(p, parameter, value);
 	else if (is_interval(parameter))
 		hw_params_get_interval(p, parameter, &ret, &tmp);
+	else
+		return 0;
 
 	return ret;
 }
@@ -247,105 +245,121 @@ pcm_action_timestamp(int fd, struct timespec *ts)
 
 #include <sys/ioctl.h>
 
-// flags
+// hw_params flags
 #define PCM_NO_INTERRUPTS SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP
 
 void
-pcm_hw_params_init(pcm_hw_params_t *hw)
+pcm_params_init(pcm_params_t *p)
 {
-	hw_params_fill(hw);
+	hw_params_fill(&p->hw_params);
+
+	pcm_sw_params_t *sw = &p->sw_params;
+	memset(sw, 0, sizeof(*sw));
+	// TODO set to kernel defaults
+	// In HW_PARAMS_SETUP ioctl:
+	//   - boundary is set by the kernel
+	// After HW_PARAMS_SETUP, but before calling SW_PARAMS_SETUP:
+	//   - if zero, stop_threshold defaults to the returned buffer_size
+	//   - if zero, avail_min defaults to the returned period_size
+	// Here, we set:
+	sw->start_threshold = 1;
+	sw->period_step = 1; // is deprecated?
 }
 
 void
-pcm_set(pcm_hw_params_t *hw, pcm_param_t parameter, unsigned int value)
+pcm_set(pcm_params_t *params, pcm_param_t parameter, unsigned long value)
 {
+	pcm_hw_params_t *hw = &params->hw_params;
+	pcm_sw_params_t *sw = &params->sw_params;
 	switch (parameter) {
 	default:
+		// unsigned long value must be truncated to unsigned int (this is expected)
 		hw_params_set(hw, parameter, value);
 		break;
 	case PCM_INTERRUPT:
 		hw->flags = value ? hw->flags |  PCM_NO_INTERRUPTS
 		                  : hw->flags & ~PCM_NO_INTERRUPTS;
 		break;
+
+	// Software parameters
+	case PCM_TSTAMP_TYPE:
+		// enable timestamp automatically when this setting is set
+		// Otherwise, timestamp is disabled.
+		sw->tstamp_mode = SNDRV_PCM_TSTAMP_ENABLE;
+		sw->tstamp_type = value;
+		break;
+	case PCM_AVAIL_MIN:         sw->avail_min         = value; break;
+	case PCM_START_THRESHOLD:   sw->start_threshold   = value; break;
+	case PCM_XRUN_THRESHOLD:    sw->stop_threshold    = value; break;
+	case PCM_SILENCE_THRESHOLD: sw->silence_threshold = value; break;
+	case PCM_SILENCE_SIZE:      sw->silence_size      = value; break;
 	}
 }
 
 void
-pcm_set_range(pcm_hw_params_t *hw, pcm_param_t parameter,
+pcm_set_range(pcm_params_t *params, pcm_param_t parameter,
               unsigned int min, unsigned int max)
 {
-	hw_params_set_interval(hw, parameter, min, max);
+	if (parameter <= PCM_LAST_MASK || parameter > PCM_LAST_INTERVAL)
+		pcm_set(params, parameter, min);
+	else
+		hw_params_set_interval(&params->hw_params, parameter, min, max);
 }
 
 // for masks, return 1 if value is set, 0 otherwise
-unsigned int
-pcm_get(pcm_hw_params_t *hw, pcm_param_t parameter, unsigned int value)
+unsigned long
+pcm_get(pcm_params_t *params, pcm_param_t parameter, unsigned int value)
 {
+	pcm_hw_params_t *hw = &params->hw_params;
+	pcm_sw_params_t *sw = &params->sw_params;
 	switch (parameter) {
-	default:
-		return hw_params_get(hw, parameter, value);
-	case PCM_INTERRUPT:
-		return hw->flags & PCM_NO_INTERRUPTS;
+	default:                    return hw_params_get(hw, parameter, value);
+	case PCM_INTERRUPT:         return hw->flags & PCM_NO_INTERRUPTS;
+	case PCM_TSTAMP_TYPE:       return sw->tstamp_mode ? sw->tstamp_type : UINT_MAX;
+	case PCM_AVAIL_MIN:         return sw->avail_min;
+	case PCM_START_THRESHOLD:   return sw->start_threshold;
+	case PCM_XRUN_THRESHOLD:    return sw->stop_threshold;
+	case PCM_SILENCE_THRESHOLD: return sw->silence_threshold;
+	case PCM_SILENCE_SIZE:      return sw->silence_size;
 	}
 }
 
 void
-pcm_get_range(pcm_hw_params_t *hw, pcm_param_t parameter,
+pcm_get_range(pcm_params_t *params, pcm_param_t parameter,
               unsigned int *min, unsigned int *max)
 {
-	hw_params_get_interval(hw, parameter, min, max);
+	hw_params_get_interval(&params->hw_params, parameter, min, max);
 }
 
 int
-pcm_hw_params_refine(int fd, pcm_hw_params_t *hw)
+pcm_params_refine(int fd, pcm_params_t *params)
 {
-	return ioctl(fd, SNDRV_PCM_IOCTL_HW_REFINE, hw);
+	return ioctl(fd, SNDRV_PCM_IOCTL_HW_REFINE, &params->hw_params);
 }
 
 int
-pcm_hw_params_setup(int fd, pcm_hw_params_t *hw)
+pcm_params_setup(int fd, pcm_params_t *params)
 {
 	// send hardware parameters to ALSA in kernel
-	if (ioctl(fd, SNDRV_PCM_IOCTL_HW_PARAMS, hw) == -1)
+	if (ioctl(fd, SNDRV_PCM_IOCTL_HW_PARAMS, &params->hw_params) == -1)
 		return -1;
 
-	return ioctl(fd, SNDRV_PCM_IOCTL_PREPARE);
-}
+	if (!pcm_get(params, PCM_AVAIL_MIN, 0))
+		pcm_set(params, PCM_AVAIL_MIN, pcm_get(params, PCM_PERIOD_SIZE, 0));
+	if (!pcm_get(params, PCM_XRUN_THRESHOLD, 0))
+		pcm_set(params, PCM_XRUN_THRESHOLD, pcm_get(params, PCM_BUFFER_SIZE, 0));
 
-// Software parameters
-// ===================
-
-void
-pcm_sw_params_init(pcm_sw_params_t *sw, pcm_hw_params_t *hw)
-{
-	// enable timestamp by default
-	sw->tstamp_mode = SNDRV_PCM_TSTAMP_ENABLE;
-	sw->tstamp_type = PCM_CLOCK_REALTIME;
-
-	sw->avail_min = pcm_get(hw, PCM_PERIOD_SIZE, 0);
-
-	sw->start_threshold = 1;
-	sw->stop_threshold = pcm_get(hw, PCM_BUFFER_SIZE, 0);
-	sw->silence_threshold = 0;
-	sw->silence_size = 0;
-
-	sw->period_step = 1; /* deprecated? */
-}
-
-int
-pcm_sw_params_setup(int fd, pcm_sw_params_t *sw)
-{
 	// must use TTSTAMP ioctl before 2.0.12 protocol
 #ifdef SNDRV_PCM_IOCTL_TTSTAMP
-	if (ioctl(fd, SNDRV_PCM_IOCTL_TTSTAMP, &sw->tstamp_type) == -1)
+	if (ioctl(fd, SNDRV_PCM_IOCTL_TTSTAMP, &params->sw_params.tstamp_type) == -1)
 		return -1;
 #endif
 
 	// send software parameters to ALSA in kernel
-	if (ioctl(fd, SNDRV_PCM_IOCTL_SW_PARAMS, sw) == -1)
+	if (ioctl(fd, SNDRV_PCM_IOCTL_SW_PARAMS, &params->sw_params) == -1)
 		return -1;
 
-	return 0;
+	return ioctl(fd, SNDRV_PCM_IOCTL_PREPARE);
 }
 
 // Helper for opening Linux PCM device
@@ -357,15 +371,16 @@ pcm_sw_params_setup(int fd, pcm_sw_params_t *sw)
 #include <sys/stat.h>     // open()
 #include <fcntl.h>        // open()
 
+#ifndef PCM_DEV_PATH
 #define PCM_DEV_PATH "/dev/snd/"
+#endif
 
 int
 pcm_open(int card, int device, int flags)
 {
 	char path[PATH_MAX];
 
-	snprintf(path, sizeof(path),
-	         PCM_DEV_PATH "pcmC%uD%u%c", card, device,
+	snprintf(path, sizeof(path), PCM_DEV_PATH "pcmC%uD%u%c", card, device,
 	         (flags & 1) == PCM_INPUT ? 'c' : 'p');
 
 	return open(path, O_RDWR | (flags & PCM_NONBLOCK ? O_NONBLOCK : 0));
